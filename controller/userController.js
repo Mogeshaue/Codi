@@ -10,7 +10,7 @@ const createUser = async (req, res) => {
       console.log("User Data for Ticket Creation:", userData);
 
       const newUser = await userModel.createUser(userData);
-      console.log(newUser);
+      console.log(newUser,"usercontroler for creating user");
       return res.status(200).json(newUser);
     } else {
       res.status(401).json({ message: "Unauthorized" });
@@ -55,9 +55,10 @@ const getUserById = async (req, res) => {
 const findUserByEmail = async (req, res) => {
   try {
     const email = req.body.email;
+    console.log(req.bodyemail ,"email to find user",req.body,"req.body")
     const user = await userModel.findUserByEmail(email);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found by find userbyemail in user controller" });
     }
     return res.status(200).json(user);
   } catch (error) {

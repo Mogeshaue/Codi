@@ -3,6 +3,7 @@ const ticketModel = require("../model/ticketModel");
 const createTicket = async (req, res) => {
     try {
         const { numberOfTickets, ticketStatus, userId, bayId } = req.body;
+        console.log(numberOfTickets, ticketStatus, userId, bayId,"data for create ticket,no of ticket,status,userid,bayid")
 
         // Create tickets in a loop
         const tickets = [];

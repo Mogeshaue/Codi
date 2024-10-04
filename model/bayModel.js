@@ -1,4 +1,4 @@
-// import { PrismaClient} from '@prisma/client';
+//import { PrismaClient} from '@prisma/client';
 const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
@@ -13,7 +13,7 @@ const createBay = async (data) => {
       bay_name: data.bay_name,
     },
   });
-  console.log(bay);
+  console.log(bay,"after cereating the user");
 
   return bay;
 };
@@ -24,12 +24,14 @@ const getAllBay = async () => {
 };
 
 const getBayIdByAmountAndGender = async (amount, gender) => {
+  console.log(amount,gender)
   const bay = await prisma.bay.findFirst({
     where: {
       amount_of_ticket: amount,
       bay_name: gender === "MALE" ? { in: ["MALE"] } : { in: ["FEMALE"] }, // Use enum values
-    },
+    }
   });
+  console.log(bay,"bay ater updating the gender and amt in fun get ammtnad gen")
 
   if (bay) {
     return bay.bay_id;
@@ -90,4 +92,5 @@ module.exports = {
   getBayByType,
   updateBayAvailability,
   getBayIdByAmountAndGender,
+  getBayIdByGender
 };

@@ -10,8 +10,8 @@ const handlePaymentSuccess = async (paymentData) => {
   try {
     // console.log(JSON.stringify(paymentData));
 
-    console.log(paymentData, "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL");
-    const { mihpayid, txnid, amount, firstname, email, phone, status } =
+    console.log(paymentData, "payment data -payment controller");
+    const { mihpayid, txnid, amount, firstname, email, phone, status,} =
       paymentData;
 
     if (status === "success") {
@@ -24,17 +24,20 @@ const handlePaymentSuccess = async (paymentData) => {
     }
 
     const user = await findUserByEmail(email);
-    console.log(email, "snfjnjnjlsnfjfnjfngjfndgjndjfgnfjnjdfn");
+    console.log(user,"after return")
     const ticketCount = 1;
-    const bayId = 1;
+    const bayId = user.bay_id;
+    const bayType=user.gender;
 
     const data = {
       userId: user.user_id,
       amount,
+      ticketCount,
       txnId: txnid,
       ticketStatus: "PURCHASED",
       bayId,
       mihpayid,
+      bayType
     };
 
     const ticket = await ticketModel.createTicket(data);
@@ -44,7 +47,7 @@ const handlePaymentSuccess = async (paymentData) => {
     // console.log(user);
 
     const bay = await getIndividualBayById(bayId);
-    console.log(bay, "bbbbbbbbbbbbbbbbbbbbbbbbbbb:");
+    console.log(bay, "bay :");
 
     const updateBayAvailabeSeatCount = await updateBayAvailability(
       bayId,
@@ -53,9 +56,6 @@ const handlePaymentSuccess = async (paymentData) => {
 
     console.log(updateBayAvailabeSeatCount, `new availability of bay ${bayId}`);
 
-    // if (bay) {
-    //   await updateBayAvailability(bayId, bay.available - ticketCount);
-    // }
 
     return { success: true };
   } catch (error) {
@@ -73,7 +73,7 @@ const handlePaymentFailure = async (paymentData) => {
 
     const user = await findUserByEmail(email);
     if (!user) {
-      throw new Error("User not found.");
+      throw new Error("User not found using the email.");
     }
     if (status == "failure") {
       const transactionStatus = "CANCELED";

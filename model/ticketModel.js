@@ -3,29 +3,28 @@ const { getUserById, findUserByEmail } = require("./userModel");
 const prisma = new PrismaClient();
 
 const createTicket = async (data) => {
+  console.log(data,'data of create ticket')
   console.log(
     "ticket status: " + data.ticketStatus,
     "userId: " + data.userId,
-    "bayType: " + data.bayType
   );
-  const mihpayid = data.mihpayid;
+  console.log(data.userId,"user id to find the user");
+ 
   const user = await getUserById(parseInt(data.userId));
+  console.log(user,"after finding the user using the id")
   if (!user) {
-    throw new Error("User not found");
+    throw new Error("User not found using the id");
   }
 
   const ticket = await prisma.ticket.create({
     data: {
       ticket_status: data.ticketStatus,
       date: new Date(),
-      //   user_id: data.userId,
-      //   bay_id: data.bayId,
-      //   transaction_id: data.txnId,
       User: {
-        connect: { user_id: data.userId },
+        connect: { user_id: user.user_id },
       },
       Bay: {
-        connect: { bay_id: data.bayId },
+        connect: { bay_id: user.bay_id },
       },
       Transaction: {
         connect: { transaction_id: data.txnId },

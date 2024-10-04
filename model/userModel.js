@@ -3,29 +3,34 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const createUser = async (userData) => {
-  const existingUser = await findUserByEmail(userData.email);
-
-  if (existingUser) {
-    throw new Error("User already exists with this email.");
+  try {
+    const existingUser = await findUserByEmail(userData.email);
+    if (existingUser) {
+      console.log("User already exists");
+      return existingUser;
+    }
+    console.log("Creating new user...");
+    const result = await prisma.User.create({
+      data: {
+        name: userData?.name,
+        email: userData?.email,
+        gender: userData?.gender || "MALE",
+        contactNumber: userData?.contactNumber || "01",
+        seating: "SEATING",
+        transportNeed: userData?.transportNeeded ? true : false,
+      },
+    });
+    console.log("User created successfully:", result);
+    return result;
+  } catch (error) {
+    console.error("Error creating user:", error);
+    throw new Error("User creation failed");
   }
-
-  const result = await prisma.User.create({
-    data: {
-      name: userData?.name,
-      email: userData?.email,
-      gender: userData?.gender || "MALE",
-      contactNumber: userData?.contactNumber || "01",
-      seating: "SEATING",
-      transportNeed: userData?.transportNeeded ? true : false,
-    },
-  });
-  console.log(result);
-
-  return result;
 };
 
 
-const updateUser = async (userEmail, userData) => {
+
+const updateUser = async (userEmail, userData,bayReq) => {
   const existingUser = await findUserByEmail(userEmail.email);
 
   if (!existingUser) {
@@ -43,6 +48,7 @@ const updateUser = async (userEmail, userData) => {
           contactNumber: userData.contactNumber || existingUser.contactNumber,
           seating: userData.seating || existingUser.seating,
           transportNeed: typeof userData.transportNeeded !== 'undefined' ? userData.transportNeeded : existingUser.transportNeed,
+          bay_id:bayReq || existingUser.bay_id
       },
   });
 
@@ -87,14 +93,15 @@ const getUserById = async (userId) => {
     },
   });
 };
-const findUserByEmail = async (email) => {
-  console.log("HI")
-  console.log(email);
+const   findUserByEmail = async (email) => {
+ 
+  console.log(email,"function of finding the user using this email");
   const user = await prisma.User.findFirst({
       where: {
           email: email, 
       },
   });
+  console.log(user,"before return the user after finded the user in db")
 
   return user;
 };

@@ -19,7 +19,7 @@ const createTransaction = async (data) => {
       },
     });
 
-    console.log("Transaction created:", transaction);
+    
     return transaction;
   } catch (error) {
     console.error("Error creating transaction:", error);

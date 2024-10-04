@@ -102,38 +102,52 @@ app.get(
 
 app.get("/getUserDetails", (req, res) => {
   if (req.isAuthenticated() && req.session.user) {
-    console.log(req.session.user);
+    console.log(req.session.user,"user sessions to get user details");
     return res.status(200).json(req.session.user);
   } else {
     return res.status(401).json({ error: "User not authenticated" });
   }
 });
 
-app.post(
-  "/",
-  passport.authenticate("azuread-openidconnect", { failureRedirect: "/" }),
-  (req, res) => {
-    if (!req.session) {
-      return res.status(500).json({ error: "Session not initialized" });
-    }
-
-    req.session.user = req.user;
-    req.session.save((err) => {
-      if (err) {
-        console.error("Error saving session:", err);
-        return res.status(500).json({ error: "Internal Server Error" });
-      }
-      console.log("Session saved:", req.session);
-      res.redirect("http://localhost:3000/jananam");
-    });
+app.post("/", passport.authenticate("azuread-openidconnect", { failureRedirect: "/" }), async (req, res) => {
+  if (!req.session) {
+    return res.status(500).json({ error: "Session not initialized" });
   }
-);
+  req.session.user = req.user;
+
+  const userData = req.user._json;
+
+  // Check if the user exists, and create if not
+  let userExistence;
+  try {
+    userExistence = await userModel.findUserByEmail(userData.email);
+    if (!userExistence) {
+      const response = await userModel.createUser(userData);
+      console.log("User created: ", response);
+    } else {
+      console.log("User already exists: ", userExistence);
+    }
+  } catch (error) {
+    console.error("Error in user creation flow:", error.message);
+    return res.status(500).json({ error: "User creation failed" });
+  }
+
+  req.session.save((err) => {
+    if (err) {
+      console.error("Error saving session:", err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    console.log("Session saved:", req.session);
+    res.redirect("http://localhost:3000/jananam");
+  });
+});
+
 
 app.post("/createTicket", userController.createUser);
 
 app.post("/getUser", async (req, res) => {
   try {
-    console.log(req.body.email);
+    console.log(req.body.email,"get the user forticket req body.email");
     const email = req.body.email;
 
     const userDetails = await userModel.getUserDetailsByEmail(email);
@@ -147,38 +161,18 @@ app.post("/getUser", async (req, res) => {
   }
 });
 
-// app.post("/createTicket", (req, res) => {
-//   if (req.isAuthenticated() && req.session.user) {
-//     console.log(req.body);
-//     console.log(req.session.user._json);
-//     const name = req.session.user._json.name;
-//     const email = req.session.user._json.email;
-//   } else {
-//     res.status(401).json({ message: "Unauthorized" });
-//   }
-// });
-
-// app.post(
-//   "/",
-//   passport.authenticate("azuread-openidconnect", { failureRedirect: "/" }),
-//   (req, res) => {
-//     res.redirect("http://localhost:3000/jananam");
-//     // res.redirect("/");
-
-//     console.log("kdmmlsl");
-//   }
-// );
-
 app.get("/", async (req, res) => {
-  if (req.isAuthenticated()) {
+  console.log(req,"data to create the user ")
+  if (req.isAuthenticated()) { 
     if (req?.user) {
       const userData = req.user._json;
+      console.log(userData,"json for create user")
       const userExistence = await userModel.findUserByEmail(
         req.user._json.email
       );
       if (!userExistence) {
         const response = await userModel.createUser(userData);
-        console.log(response);
+        console.log(response,"response form user existance");
       }
       // }
       // const response = await userModel.createUser(userData);
@@ -186,8 +180,7 @@ app.get("/", async (req, res) => {
     }
 
     res.redirect("http://localhost:3000/jananam");
-    console.log(`Hello, ${req.user.displayName}!`);
-    // res.send(`Hello, ${req.user.displayName}!`);
+    console.log(`displaying the name  ${req.user.displayName}!`);
   } else {
     res.redirect("http://localhost:3000/");
   }
@@ -207,8 +200,7 @@ app.use("/api", bayRoutes);
 
 app.get("/check", (req, res) => {
   if (req.isAuthenticated()) {
-    console.log(req.isAuthenticated)
-    console.log( req.user)
+    console.log( req.user,"check whether the user is authenticated or not from check endpoint")
     res.json({ user: req.user });
   } else {
     res.json({ error: "Not authenticated" });
@@ -216,16 +208,18 @@ app.get("/check", (req, res) => {
 });
 app.post("/payment-success", async (req, res) => {
   const paymentData = req.body;
+  console.log(req,"/payment req body")
 
-  console.log("Payment Data:", paymentData);
+  console.log("Payment Data by on click the cnf and book -btn:", paymentData);
   // res.redirect("http://localhost:3000/ticket");
 
   const result = await paymentController.handlePaymentSuccess(paymentData);
-  console.log(result)
-  console.log(result.error)
+  console.log(result,"result sucess payment data")
+  console.log(result.error,"result error")
 
   if (result.success) {
-    res.redirect("http://localhost:3000/ticket");
+    res.redirect("http://localhost:3000/ticket",);
+    console.log("redirecte to success")
   } else {
     res
       .status(500)
@@ -238,7 +232,7 @@ app.post("/payment-failure", async (req, res) => {
   const result = await paymentController.handlePaymentFailure(paymentData);
 
   if (result.success) {
-    res.redirect("http://localhost:3000/failure");
+    res.redirect("http://localhost:3000/Failure");
   } else {
     res.status(500).json({
       message: "Error processing payment failure",
@@ -248,15 +242,16 @@ app.post("/payment-failure", async (req, res) => {
 });
 
 app.post("/failure", async (req, res) => {
-  console.log("helloe");
+ 
   const data = req.body;
+  console.log("cnf-to check failure data for failure ",data);
   console.log(data);
   res.json({ message: "Payment" });
 });
 
 app.get("/getBays", async (req, res) => {
   try {
-    console.log("jfdk");
+    console.log("cheking the bays ");
     const boysBays = await bayModel.getBayByType("MALE");
     const girlsBays = await bayModel.getBayByType("FEMALE");
 
@@ -324,23 +319,26 @@ app.post("/Message", async (req, res) => {
 });
 
 app.post("/payment", async (req, res) => {
-  console.log(req.body, "yuyyyyyyyyyyyyyyyyyyyyyyyyyyy");
+  console.log(req.body, "after hitting the payment user data");
   const userDataToUpdate = req.body;
+  console.log(userDataToUpdate,"user date to update")
+  
   const bayReq = await bayModel.getBayIdByAmountAndGender(
     userDataToUpdate.amount,
     userDataToUpdate.gender
   );
 
-  console.log(bayReq, "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq");
 
-  console.log(req.user._json);
+  console.log(bayReq, "after getting bay id -form db");
+
+  console.log(req.user._json,"json from when clik payment-btn then upated ");
   const userEmail = req.user._json.email;
-  console.log(typeof userEmail);
+  console.log(typeof userEmail,"user email after upt db");
   const user = await userModel.findUserByEmail(userEmail);
   if (!user) {
     return res.status(400).json({ message: "User not found" });
   }
-  const updatedUser = await userModel.updateUser(user, userDataToUpdate);
+  const updatedUser = await userModel.updateUser(user, userDataToUpdate,bayReq);
   console.log(updatedUser, "updated user");
   // const transactionResult = await transactionModel.createTransaction()
 
@@ -372,8 +370,9 @@ app.post("/payment", async (req, res) => {
     amount: totalAmount,
     productinfo: "Test Product",
     firstname: "Anbarasan",
-    email: "saravanan.22me@kct.ac.in",
+    email: updatedUser.email,
   });
+  console.log(hash,"hash using first name email")
 
   const paymentData = {
     key: process.env.PAYU_MERCHANT_KEY,
@@ -382,19 +381,21 @@ app.post("/payment", async (req, res) => {
     amount: totalAmount,
     productinfo: "Test Product",
     firstname: "Anbarasan",
-    email: "saravanan.22me@kct.ac.in",
+    email:   updatedUser.email,
     phone: "8056901611",
     surl: "http://localhost:8000/payment-success",
     furl: "http://localhost:8000/payment-failure",
   };
 
-  res.json(paymentData);
+  // res.json(paymentData,"payment data ");
+  res.status(200).json(paymentData);
 });
 
 app.post("/initiate-payment", async (req, res) => {
+  console.log(req.body)
   const { paymentData } = req.body;
 
-  console.log(paymentData, "wwwwwwwwwwwwwwwwwwwwwwwwww");
+  console.log(paymentData, "after initaiate payment the payment data rq.body");
   const user = await userModel.findUserByEmail(paymentData.email);
   const txnId = req.body.paymentData.txnid;
   const amount = req.body.paymentData.amount;
@@ -409,7 +410,7 @@ app.post("/initiate-payment", async (req, res) => {
   };
   const transactionResponse = await transactionModel.createTransaction(data);
 
-  console.log(transactionResponse, "Transaction created");
+  console.log(transactionResponse, "Transaction created after retyrn");
 
   const payUForm = `
     <form method="POST" action="https://test.payu.in/_payment">
@@ -459,6 +460,7 @@ app.post("/generate-hash", (req, res) => {
     email,
   });
 });
+
 
 app.post("/createBay", (req, res) => {
   const data = req.body;
