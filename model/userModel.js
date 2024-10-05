@@ -58,6 +58,14 @@ const updateUser = async (userEmail, userData,bayReq) => {
 
 
 
+// Function to check the ticket status based on the user's email
+
+
+
+
+
+
+
 
 // const updateUser = async (userEmail, updatedUserData) => {
 //   const updatedUser = await prisma.User.update({
@@ -122,5 +130,42 @@ const getUserDetailsByEmail = async (email) => {
 
   return userDetails;
 };
+const getTicketStatusByEmail = async (email) => {
+  try {
+    // Find the user by email and include the tickets they have
+    const user = await prismaClient.user.findUnique({
+      where: {
+        email: email,
+      },
+      include: {
+        Tickets: true, // Include the Tickets relation to check ticket count
+      },
+    });
 
-module.exports = { createUser, findUserByEmail, getUserById, getAllUsers ,updateUser,getUserDetailsByEmail};
+    // If the user exists and has one or more tickets, return status as purchased
+    if (user && user.Tickets.length > 0) {
+      return {
+        status: 'purchased',
+        ticketCount: user.Tickets.length,
+      };
+    } 
+    // If the user exists but has no tickets
+    else if (user) {
+      return {
+        status: 'not purchased',
+      };
+    } 
+    // If no user is found with the provided email
+    else {
+      return {
+        error: 'User not found',
+      };
+    }
+  } catch (error) {
+    console.error('Error fetching ticket status:', error);
+    throw new Error('Unable to fetch ticket status');
+  }
+};
+
+
+module.exports = { createUser, findUserByEmail, getUserById, getAllUsers ,updateUser,getUserDetailsByEmail,getTicketStatusByEmail};

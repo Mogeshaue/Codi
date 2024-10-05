@@ -10,4 +10,6 @@ router.get("/bays", bayController.getAllBay);
 router.get("/bays/:id", bayController.getBayById);
 router.post("/baysByType", bayController.getBayByType);
 
+// router.get("/getBays", bayController.getBays);
+
 module.exports = router;

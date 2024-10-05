@@ -33,6 +33,9 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Get booking status
+
+
 const sessionMiddleware = session({
   store: new PgSession({
     prisma: prisma,
@@ -49,6 +52,11 @@ const sessionMiddleware = session({
 });
 
 app.use(sessionMiddleware);
+// app.use((req, res, next) => {
+//   console.log(`Request method: ${req.method}, URL: ${req.url}`);
+//   next(); // Proceed to the next middleware or route handler
+// });
+//above app.(from gpt)
 
 // Passport configuration
 app.use(passport.initialize());
@@ -100,14 +108,7 @@ app.get(
   passport.authenticate("azuread-openidconnect")
 );
 
-app.get("/getUserDetails", (req, res) => {
-  if (req.isAuthenticated() && req.session.user) {
-    console.log(req.session.user,"user sessions to get user details");
-    return res.status(200).json(req.session.user);
-  } else {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-});
+
 
 app.post("/", passport.authenticate("azuread-openidconnect", { failureRedirect: "/" }), async (req, res) => {
   if (!req.session) {
@@ -116,6 +117,7 @@ app.post("/", passport.authenticate("azuread-openidconnect", { failureRedirect: 
   req.session.user = req.user;
 
   const userData = req.user._json;
+  console.log(userData,"for creating the user if not exists")
 
   // Check if the user exists, and create if not
   let userExistence;
@@ -123,7 +125,7 @@ app.post("/", passport.authenticate("azuread-openidconnect", { failureRedirect: 
     userExistence = await userModel.findUserByEmail(userData.email);
     if (!userExistence) {
       const response = await userModel.createUser(userData);
-      console.log("User created: ", response);
+      console.log("User created whith the above data: ", response);
     } else {
       console.log("User already exists: ", userExistence);
     }
@@ -134,20 +136,102 @@ app.post("/", passport.authenticate("azuread-openidconnect", { failureRedirect: 
 
   req.session.save((err) => {
     if (err) {
-      console.error("Error saving session:", err);
+      console.error("Error saving session for saving seaaion:", err); 
       return res.status(500).json({ error: "Internal Server Error" });
     }
-    console.log("Session saved:", req.session);
+    // console.log("Session saved by hitting / path:", req.session,"end  of session data");
     res.redirect("http://localhost:3000/jananam");
   });
 });
+
+
+
+const getTicketStatusByEmail = async (email) => {
+  try {
+    // Find the user by email and include the tickets they have
+    const user = await prisma.user.findUnique({
+      where: {
+        email: email,
+      },
+      include: {
+        Tickets: true, // Include the Tickets relation to check ticket count
+      },
+    });
+
+    // If the user exists and has one or more tickets, return status as purchased
+    if (user && user.Tickets.length > 0) {
+      return {
+        status: 'purchased',
+        ticketCount: user.Tickets.length,
+      };
+    } 
+    // If the user exists but has no tickets
+    else if (user) {
+      return {
+        status: 'not purchased',
+      };
+    } 
+    // If no user is found with the provided email
+    else {
+      return {
+        error: 'User not found',
+      };
+    }
+  } catch (error) {
+    console.error('Error fetching ticket status:', error);
+    throw new Error('Unable to fetch ticket status');
+  }
+};
+
+
+app.get("/Booking-status", async (req, res) => {
+  // Check if user is authenticated
+  if (!req.session?.user?._json?.email) {
+    return res.status(401).json({ error: "User is not authenticated" });
+  }
+
+  const userEmail = req.session.user._json.email;
+
+  try {
+    // Get the ticket status of the user
+    const userTicketStatus = await getTicketStatusByEmail(userEmail);
+
+    // If no user was found, send a 404 response
+    if (!userTicketStatus || userTicketStatus.error) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Check the ticket status and respond accordingly
+    if (userTicketStatus.status === 'purchased') {
+      return res.json({
+        bookingStatus: "PURCHASED",
+        ticketCount: userTicketStatus.ticketCount,
+      });
+    } else {
+      return res.json({
+        bookingStatus: "Not Booked"
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching booking status:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
+
+
+
+
+
 
 
 app.post("/createTicket", userController.createUser);
 
 app.post("/getUser", async (req, res) => {
   try {
-    console.log(req.body.email,"get the user forticket req body.email");
+    console.log(req.body.email,"get the user for show the ticket  req body.email");
     const email = req.body.email;
 
     const userDetails = await userModel.getUserDetailsByEmail(email);
@@ -160,6 +244,24 @@ app.post("/getUser", async (req, res) => {
     });
   }
 });
+app.get("/getTicketDetails", (req, res) => {
+  if (req.isAuthenticated() && req.session.user) {
+    console.log(req.session.user,"user sessions to get user details");
+    return res.status(200).json(req.session.user);
+  } else {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+});
+
+
+
+
+
+
+
+
+
+
 
 app.get("/", async (req, res) => {
   console.log(req,"data to create the user ")
@@ -174,9 +276,6 @@ app.get("/", async (req, res) => {
         const response = await userModel.createUser(userData);
         console.log(response,"response form user existance");
       }
-      // }
-      // const response = await userModel.createUser(userData);
-      // console.log(response);
     }
 
     res.redirect("http://localhost:3000/jananam");
@@ -186,26 +285,78 @@ app.get("/", async (req, res) => {
   }
 });
 
-app.get("/logout", (req, res) => {
-  req.logout(() => {
-    res.redirect("/");
+
+
+
+
+
+
+
+
+app.post('/logout', (req, res) => {
+  console.log(req, "/logout req");
+
+  // Passport provides a logout method
+  req.logout((err) => {
+    if (err) {
+      console.error('Error logging out:', err);
+      return res.status(500).send('Failed to log out');
+    }
+
+    // Destroy the session after logging out
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Failed to destroy session:', err);
+        return res.status(500).send('Failed to destroy session');
+      }
+
+      // Clear the session cookie
+      res.clearCookie('connect.sid');
+      
+      // Redirect or send a response
+      return res.status(200).send('Logged out successfully');
+    });
   });
 });
 
-// seperate for payment
+//above post req gpt
 
-//jskjfk
+// app.get("/logout", (req, res) => {
+//   req.logout(() => {
+//     res.redirect("/");
+//   });
+// });
+
+
+
+
+
+
+
+
 
 app.use("/api", bayRoutes);
 
-app.get("/check", (req, res) => {
+// app.get("/check", (req, res) => {
+//   if (req.isAuthenticated()) {
+//     console.log( req.user,"check whether the user is authenticated or not from check endpoint")
+//     res.json({ user: req.user });
+//   } else {
+//     res.json({ error: "Not authenticated" });
+//   }
+// });  below 8 line code
+app.get("/check", async (req, res) => {
+  // Check if the user is authenticated
   if (req.isAuthenticated()) {
-    console.log( req.user,"check whether the user is authenticated or not from check endpoint")
-    res.json({ user: req.user });
+    res.status(200).json({ isLoggedIn: true, user: req.user });
   } else {
-    res.json({ error: "Not authenticated" });
+    console.log('unauthorized from /check function')
+    res.status(404).json({ isLoggedIn: false });
   }
 });
+
+
+
 app.post("/payment-success", async (req, res) => {
   const paymentData = req.body;
   console.log(req,"/payment req body")
